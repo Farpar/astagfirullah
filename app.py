@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 st.set_page_config(page_title="Loan Approval Prediction", page_icon="🏦", layout="centered")
-
 st.title("🏦 Loan Approval Prediction System")
 st.write("Masukkan data pemohon untuk memprediksi kelayakan pinjaman.")
 
@@ -17,7 +16,6 @@ def load_model():
 try:
     model, scaler = load_model()
 
-    # ── Metrik model (wajib sesuai ketentuan tugas) ──
     st.divider()
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     col_m1.metric("Model", "Random Forest")
@@ -30,41 +28,82 @@ try:
 
     col1, col2 = st.columns(2)
     with col1:
-        income = st.number_input("💰 Pendapatan Tahunan (₹)", min_value=0, max_value=10000000, value=5000000, step=100000)
-        loan_amount = st.number_input("🏷️ Jumlah Pinjaman (₹)", min_value=0, max_value=40000000, value=10000000, step=500000)
-        cibil_score = st.slider("📈 CIBIL Score", min_value=300, max_value=900, value=650)
-        loan_term = st.selectbox("📅 Tenor Pinjaman (tahun)", options=[2, 4, 6, 8, 10, 12, 16, 20], index=2)
+        dependents    = st.slider("👨‍👩‍👧 Jumlah Tanggungan", min_value=0, max_value=5, value=1)
+        education     = st.selectbox("🎓 Pendidikan", options=["Graduate", "Not Graduate"])
+        self_employed = st.selectbox("💼 Wiraswasta?", options=["No", "Yes"])
+        income        = st.number_input("💰 Pendapatan Tahunan (₹)", min_value=0, max_value=10000000, value=5000000, step=100000)
 
     with col2:
-        dependents = st.slider("👨‍👩‍👧 Jumlah Tanggungan", min_value=0, max_value=5, value=1)
-        residential_assets = st.number_input("🏠 Nilai Aset Rumah (₹)", min_value=0, max_value=30000000, value=2000000, step=500000)
-        commercial_assets = st.number_input("🏬 Nilai Aset Komersial (₹)", min_value=0, max_value=20000000, value=1000000, step=500000)
-        luxury_assets = st.number_input("💎 Nilai Aset Mewah (₹)", min_value=0, max_value=20000000, value=500000, step=500000)
+        loan_amount        = st.number_input("🏷️ Jumlah Pinjaman (₹)", min_value=0, max_value=40000000, value=10000000, step=500000)
+        loan_term          = st.selectbox("📅 Tenor (tahun)", options=[2, 4, 6, 8, 10, 12, 16, 20], index=2)
+        cibil_score        = st.slider("📈 CIBIL Score", min_value=300, max_value=900, value=650)
+        residential_assets = st.number_input("🏠 Aset Rumah (₹)", min_value=0, max_value=30000000, value=2000000, step=500000)
 
-    bank_assets = st.number_input("🏛️ Nilai Aset Bank (₹)", min_value=0, max_value=20000000, value=500000, step=500000)
+    col3, col4 = st.columns(2)
+    with col3:
+        commercial_assets = st.number_input("🏬 Aset Komersial (₹)", min_value=0, max_value=20000000, value=1000000, step=500000)
+        luxury_assets     = st.number_input("💎 Aset Mewah (₹)", min_value=0, max_value=20000000, value=500000, step=500000)
+    with col4:
+        bank_assets = st.number_input("🏛️ Aset Bank (₹)", min_value=0, max_value=20000000, value=500000, step=500000)
+
     st.divider()
 
     if st.button("🔍 Prediksi Sekarang", type="primary", use_container_width=True):
-        # Feature engineering sama persis seperti di training
+
+        # Encoding
+        edu_enc = 0 if education == "Graduate" else 1
+        emp_enc = 0 if self_employed == "No" else 1
+
+        # Feature engineering
         loan_to_income = loan_amount / income if income > 0 else 0
         total_assets   = residential_assets + commercial_assets + luxury_assets + bank_assets
 
-        features = [
+        # Step 1: Scale 11 fitur (sama dengan scaler)
+        scaler_features = [
             'no_of_dependents', 'income_annum', 'loan_amount', 'loan_term',
             'cibil_score', 'residential_assets_value', 'commercial_assets_value',
             'luxury_assets_value', 'bank_asset_value',
             'loan_to_income_ratio', 'total_assets'
         ]
 
-        data_input = pd.DataFrame([[
+        data_to_scale = pd.DataFrame([[
             dependents, income, loan_amount, loan_term, cibil_score,
             residential_assets, commercial_assets, luxury_assets, bank_assets,
             loan_to_income, total_assets
-        ]], columns=features)
+        ]], columns=scaler_features)
 
-        data_scaled = pd.DataFrame(scaler.transform(data_input), columns=features)
-        prediction  = model.predict(data_scaled)[0]
-        probability = model.predict_proba(data_scaled)[0]
+        data_scaled = pd.DataFrame(
+            scaler.transform(data_to_scale),
+            columns=scaler_features
+        )
+
+        # Step 2: Susun 13 fitur sesuai urutan model
+        # 'no_of_dependents', 'education', 'self_employed', 'income_annum', ...
+        final_input = pd.DataFrame([[
+            data_scaled['no_of_dependents'].values[0],
+            edu_enc,   # education (tidak di-scale)
+            emp_enc,   # self_employed (tidak di-scale)
+            data_scaled['income_annum'].values[0],
+            data_scaled['loan_amount'].values[0],
+            data_scaled['loan_term'].values[0],
+            data_scaled['cibil_score'].values[0],
+            data_scaled['residential_assets_value'].values[0],
+            data_scaled['commercial_assets_value'].values[0],
+            data_scaled['luxury_assets_value'].values[0],
+            data_scaled['bank_asset_value'].values[0],
+            data_scaled['loan_to_income_ratio'].values[0],
+            data_scaled['total_assets'].values[0]
+        ]], columns=[
+            'no_of_dependents', 'education', 'self_employed',
+            'income_annum', 'loan_amount', 'loan_term', 'cibil_score',
+            'residential_assets_value', 'commercial_assets_value',
+            'luxury_assets_value', 'bank_asset_value',
+            'loan_to_income_ratio', 'total_assets'
+        ])
+
+        # Prediksi
+        prediction  = model.predict(final_input)[0]
+        probability = model.predict_proba(final_input)[0]
 
         st.divider()
         st.subheader("📊 Hasil Prediksi")
@@ -83,14 +122,14 @@ try:
             st.info("💡 CIBIL score sangat baik. Profil kredit memenuhi syarat." if cibil_score >= 700 else "💡 Profil pemohon memenuhi kriteria persetujuan.")
         else:
             if cibil_score < 500:
-                st.warning("💡 CIBIL score terlalu rendah. Disarankan meningkatkan skor kredit.")
+                st.warning("💡 CIBIL score terlalu rendah. Tingkatkan skor kredit terlebih dahulu.")
             elif loan_to_income > 5:
                 st.warning("💡 Rasio pinjaman terhadap pendapatan terlalu tinggi.")
             else:
                 st.warning("💡 Profil pemohon belum memenuhi kriteria persetujuan.")
 
 except FileNotFoundError:
-    st.error("⚠️ File model tidak ditemukan. Pastikan 'best_model.joblib' dan 'scaler.joblib' sudah ada.")
+    st.error("⚠️ File model tidak ditemukan.")
 except Exception as e:
     st.error(f"Terjadi kesalahan: {e}")
 
