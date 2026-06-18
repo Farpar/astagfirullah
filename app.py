@@ -31,10 +31,10 @@ try:
         dependents    = st.slider("👨‍👩‍👧 Jumlah Tanggungan", min_value=0, max_value=5, value=1)
         education     = st.selectbox("🎓 Pendidikan", options=["Graduate", "Not Graduate"])
         self_employed = st.selectbox("💼 Wiraswasta?", options=["No", "Yes"])
-        income        = st.number_input("💰 Pendapatan Tahunan (₹)", min_value=0, max_value=10000000, value=500000000, step=100000)
+        income        = st.number_input("💰 Pendapatan Tahunan (₹)", min_value=0, max_value=1000000000, value=500000000, step=100000)
 
     with col2:
-        loan_amount        = st.number_input("🏷️ Jumlah Pinjaman (₹)", min_value=0, max_value=4000000000, value=10000000, step=500000)
+        loan_amount        = st.number_input("🏷️ Jumlah Pinjaman (₹)", min_value=0, max_value=1000000000, value=10000000, step=500000)
         loan_term          = st.selectbox("📅 Tenor (tahun)", options=[2, 4, 6, 8, 10, 12, 16, 20], index=2)
         cibil_score        = st.slider("📈 CIBIL Score", min_value=300, max_value=900, value=650)
         residential_assets = st.number_input("🏠 Aset Rumah (₹)", min_value=0, max_value=30000000, value=2000000, step=500000)
